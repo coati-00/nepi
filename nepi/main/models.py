@@ -1,12 +1,11 @@
 import base64
-import hashlib
-import hmac
 import datetime
+
 from django import forms
-from django.db import models
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.contenttypes import generic
+from django.core.cache import cache
+from django.db import models
 from django.db.models.query_utils import Q
 from pagetree.models import Hierarchy, UserPageVisit, PageBlock
 from pagetree.reports import PagetreeReport, StandaloneReportColumn
@@ -118,14 +117,22 @@ class UserProfile(models.Model):
             return visits[0].section
 
     def percent_complete(self, parent_section):
-        sections = parent_section.get_descendants()
+        key = "section_%s" % parent_section
+        sections = cache.get(key)
+
+        if sections is None:
+            descendants = parent_section.get_descendants()
+            sections = [s.id for s in descendants]
+            cache.set(key, sections, 600)
+
         if len(sections) > 0:
-            ids = [s.id for s in sections]
             visits = UserPageVisit.objects.filter(user=self.user,
-                                                  section__in=ids)
-            return len(visits) / float(len(sections)) * 100
+                                                  section__in=sections)
+            percent = len(visits) / float(len(sections)) * 100
         else:
-            return 100  # this section has no children.
+            percent = 100  # this section has no children.
+
+        return percent
 
     def percent_complete_optionb(self):
         hierachy = Hierarchy.objects.get(name='main')
@@ -253,8 +260,7 @@ class AggregateQuizScoreForm(forms.ModelForm):
 
 
 def random_user(username):
-    digest = hmac.new(settings.PARTICIPANT_SECRET,
-                      msg=username, digestmod=hashlib.sha256).digest()
+    digest = username.encode('utf-8')
     return base64.b64encode(digest).decode()
 
 
@@ -280,4 +286,8 @@ class DetailedReport(PagetreeReport):
                 "group", 'profile', 'list',
                 'Option B+ Groups',
                 lambda x: ",".join(x.profile.get_groups_by_hierarchy('main'))),
+            StandaloneReportColumn(
+                "country", 'profile', 'string',
+                'User identified country',
+                lambda x: x.profile.country.display_name),
             ]

@@ -715,6 +715,8 @@ class DownloadableReportView(LoggedInMixin, AdministrationOnlyMixin,
         hierarchy = get_object_or_404(Hierarchy, name=hierarchy_name)
 
         users, groups = self.get_users_and_groups(request, hierarchy)
+        users = users.filter(is_staff=False)
+        users = users.filter(submission__isnull=False)
 
         report = DetailedReport(users)
 

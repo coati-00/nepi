@@ -2,6 +2,7 @@ from datetime import date
 import datetime
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test import TestCase
 from pagetree.models import Hierarchy, Section, UserPageVisit
 from pagetree.tests.factories import HierarchyFactory, ModuleFactory
@@ -163,6 +164,7 @@ class TestUserProfile(TestCase):
         self.assertEquals(pct, 100)
 
     def test_sessions_completed(self):
+        cache.clear()
         section_one = Section.objects.get(slug='one')
         child_one = Section.objects.get(slug='introduction')
 
