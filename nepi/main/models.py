@@ -7,6 +7,7 @@ from django.contrib.contenttypes import generic
 from django.core.cache import cache
 from django.db import models
 from django.db.models.query_utils import Q
+from django.utils.encoding import force_text
 from pagetree.models import Hierarchy, UserPageVisit, PageBlock
 from pagetree.reports import PagetreeReport, StandaloneReportColumn
 
@@ -260,8 +261,7 @@ class AggregateQuizScoreForm(forms.ModelForm):
 
 
 def random_user(username):
-    digest = username.encode('utf-8')
-    return base64.b64encode(digest).decode()
+    return base64.b64encode(username.encode('utf8'))
 
 
 class DetailedReport(PagetreeReport):
@@ -289,5 +289,5 @@ class DetailedReport(PagetreeReport):
             StandaloneReportColumn(
                 "country", 'profile', 'string',
                 'User identified country',
-                lambda x: x.profile.country.display_name),
+                lambda x: x.profile.country.display_name.encode('utf8')),
             ]
